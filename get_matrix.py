@@ -20,13 +20,14 @@ def read_gps_to_UTM(file_name: str) -> np.ndarray:
     """
     column_names = ["lat", "lon"]
     gps_data = pd.read_csv(file_name, header=None, usecols=[0, 1], names=column_names)
+    gps_data = gps_data.to_numpy()
 
     # 创建 UTM 转换器（以第一行数据计算 UTM 带号）
     epsg_utm = get_utm_epsg(gps_data[0, 1])
     transformer = Transformer.from_crs("EPSG:4326", epsg_utm)
 
     # 初始化 N×3 矩阵
-    utm_matrix = np.zeros((gps_data.shape[0], 3))
+    utm_matrix = np.ones((gps_data.shape[0], 3))
     # 转化成UTM
     utm_matrix[:, :2] = np.array(transformer.transform(gps_data[:, 0], gps_data[:, 1])).T
     return utm_matrix

@@ -47,7 +47,7 @@ def solve_pnp_from_files(gps_file, txt_file, camera_intrinsic, dist_coeffs, refe
 
     # 计算参考点的 UTM 坐标
     ref_x, ref_y = transformer.transform(ref_lat, ref_lon)
-    ref_utm = np.array([ref_x, ref_y, 0])  # 参考 UTM 坐标
+    ref_utm = np.array([ref_x, ref_y, 0])  # 参考 UTM 坐标，0是为了保留z-0后的1
 
     # 归一化（减去参考点）
     obj_points -= ref_utm
@@ -55,14 +55,16 @@ def solve_pnp_from_files(gps_file, txt_file, camera_intrinsic, dist_coeffs, refe
     # 读取 2D 图像点
     img_points = np.loadtxt(txt_file, delimiter=',', dtype=np.float32)
 
-    # 对图像点去畸变
-    undistorted_points = cv2.undistortPoints(img_points.reshape(-1, 1, 2), camera_intrinsic, dist_coeffs)
-    img_points = undistorted_points.reshape(-1, 2)
-
     # 计算 EPnP
-    success, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_intrinsic, dist_coeffs, flags=cv2.SOLVEPNP_EPNP)
+    success, rvec, tvec = cv2.solvePnP(obj_points, img_points, camera_intrinsic, dist_coeffs, flags=cv2.SOLVEPNP_ITERATIVE)
     if not success:
         raise ValueError("EPnP 求解失败")
+
+    proj_points, _ = cv2.projectPoints(obj_points, rvec, tvec, camera_intrinsic, dist_coeffs)
+    # proj_points.squeeze()变成(N,2)，与img_points同形状
+    error = np.linalg.norm(img_points.squeeze() - proj_points.squeeze(), axis=1)
+    mean_error = np.mean(error)
+    print('\nMAE: ',mean_error)
 
     # 计算旋转矩阵
     rmat, _ = cv2.Rodrigues(rvec)
@@ -70,18 +72,15 @@ def solve_pnp_from_files(gps_file, txt_file, camera_intrinsic, dist_coeffs, refe
     # 构造外参矩阵 [R | T]
     extrinsic = np.hstack((rmat, tvec))
 
-    # 计算投影矩阵 P = K * [R | T]
-    projection_matrix = camera_intrinsic @ extrinsic
-
-    return rvec, extrinsic, projection_matrix, ref_utm
+    return rmat, tvec, extrinsic, ref_utm
 
 # 示例使用
-camera_intrinsic = np.array([[4324.24, 0, 959.5], [0, 4621.14, 539.5], [0, 0, 1]], dtype=np.float64)
-dist_coeffs = np.array([-8.8e-6, 0, -0.00146, 0.00122, 0], dtype=np.float64)
+# camera_intrinsic = np.array([[4324.24, 0, 959.5], [0, 4621.14, 539.5], [0, 0, 1]], dtype=np.float64)
+# dist_coeffs = np.array([-8.8e-6, 0, -0.00146, 0.00122, 0], dtype=np.float64)
 
-rvec, extrinsic, projection_matrix, ref_utm= solve_pnp_from_files("label_data/gps.csv", "label_data/images.txt", camera_intrinsic, dist_coeffs)
+# rmat, trec, extrinsic, ref_utm= solve_pnp_from_files("label_data/gps.csv", "label_data/images.txt", camera_intrinsic, dist_coeffs)
 
-print("Rotation Vector:\n", rvec)
-print("\nExtrinsic Matrix:\n", extrinsic)
-print("\nProjection Matrix:\n", projection_matrix)
-print("\nReference Point:\n",ref_utm)
+# print("Rotation Matrix:\n", rmat)
+# print("\nTranslation Vector:\n", trec)
+# print("\nExtrinsic Matrix:\n", extrinsic)
+# print("\nReference Point:\n",ref_utm)

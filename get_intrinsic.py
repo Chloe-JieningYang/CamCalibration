@@ -54,13 +54,14 @@ def calibrate_camera_from_images(row, col, image_dir):
             # cv2.destroyAllWindows()
 
     # 读取第一张图片获取图像尺寸
-    img = cv2.imread(image_paths[0])
+    img = cv2.imread(image_paths[10])
     img_shape = (img.shape[1], img.shape[0])
 
     # 进行相机标定
     ret, camera_matrix, dist_coeffs, rvecs, tvecs = cv2.calibrateCamera(
         objpoints, imgpoints, img_shape, None, None
     )
+    print('\nRMS: ',ret);
 
     # 对图片进行去畸变
     # undistorted_img = cv2.undistort(img, camera_matrix, dist_coeffs)
@@ -71,6 +72,6 @@ def calibrate_camera_from_images(row, col, image_dir):
     return camera_matrix, dist_coeffs
 
 
-camera_matrix, dist_coeffs = calibrate_camera_from_images(6, 8, "chessboard_image")
-print("Camera Matrix:\n", camera_matrix)
-print("\nDistortion Coefficients:\n", dist_coeffs)
+# camera_matrix, dist_coeffs = calibrate_camera_from_images(6, 8, "chessboard_image")
+# print("Camera Matrix:\n", camera_matrix)
+# print("\nDistortion Coefficients:\n", dist_coeffs)
